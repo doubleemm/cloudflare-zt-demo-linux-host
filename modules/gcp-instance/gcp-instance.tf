@@ -38,6 +38,7 @@ metadata = {
 #metadata_startup_script = file("${path.module}/templates/bootstrap.tpl")
 metadata_startup_script = templatefile("${path.module}/templates/bootstrap.tpl",{
   tunnel_token = var.cf_tunnel_token01
+  owner = var.owner
 })
 
 }

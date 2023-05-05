@@ -48,6 +48,14 @@ resource "cloudflare_record" "zt-demo-owncloud" {
   proxied = true
 }
 
+resource "cloudflare_record" "zt-demo-guacamole" {
+  zone_id = var.cloudflare_zone_id
+  name    = "rdpweb"
+  value   = cloudflare_argo_tunnel.zt-demo-srv-linux.cname
+  type    = "CNAME"
+  proxied = true
+}
+
 resource "cloudflare_record" "httpbin" {
   zone_id = var.cloudflare_zone_id
   name    = "httpbin"
@@ -65,12 +73,31 @@ resource "cloudflare_access_application" "zt-demo-ssh-app" {
   session_duration = "1h"
 }
 
+resource "cloudflare_access_application" "zt-demo-guacamole-app" {
+  zone_id          = var.cloudflare_zone_id
+  name             = "Access protection for ${cloudflare_record.zt-demo-guacamole.name}.${var.cloudflare_zone}"
+  domain           = "${cloudflare_record.zt-demo-guacamole.name}.${var.cloudflare_zone}"
+  session_duration = "1h"
+}
+
 ### CREATE ACCESS-POLICY FOR SSH ACCESS
 
 resource "cloudflare_access_policy" "zt-demo-rdp-policy" {
   application_id = cloudflare_access_application.zt-demo-ssh-app.id
   zone_id        = var.cloudflare_zone_id
   name           = "Example Policy for ssh.${var.cloudflare_zone}"
+  precedence     = "1"
+  decision       = "allow"
+ 
+  include {
+    email = ["${var.cloudflare_email}"]
+  }
+}
+
+resource "cloudflare_access_policy" "zt-demo-webrdp-policy" {
+  application_id = cloudflare_access_application.zt-demo-guacamole-app.id
+  zone_id        = var.cloudflare_zone_id
+  name           = "Example Policy for ${cloudflare_record.zt-demo-guacamole.name}.${var.cloudflare_zone}"
   precedence     = "1"
   decision       = "allow"
  
@@ -101,6 +128,11 @@ resource "cloudflare_tunnel_config" "zt-demo-srv-linux-config" {
     ingress_rule {
       hostname = "${cloudflare_record.zt-demo-owncloud.name}.${var.cloudflare_zone}"
       service  = "https://localhost:8080"
+    }
+
+       ingress_rule {
+      hostname = "${cloudflare_record.zt-demo-guacamole.name}.${var.cloudflare_zone}"
+      service  = "https://localhost:8081"
     }
 
     ingress_rule {
